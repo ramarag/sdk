@@ -4,7 +4,18 @@
             "certificate": "Microsoft256",
             "strongName": "null",
           "values": [
-            "netfx_NETCoreUWP.msi"
+            "netfx_NETCoreUWP.msi",
+            "cab1.cab",
+            "cab2.cab",
+            "cab3.cab",
+            "cab4.cab",
+            "cab5.cab",
+            "cab6.cab",
+            "cab7.cab",
+            "cab8.cab",
+            "cab9.cab",
+            "cab10.cab",
+            "cab11.cab"
           ]
         }
     ]
