@@ -2,7 +2,7 @@
     sign: [
         {
             "certificate": "Microsoft256",
-            "strongName": "MsSharedLib72",
+            "strongName": "null",
           "values": [
             "netfx_NETCoreUWP.msi"
           ]
