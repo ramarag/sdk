@@ -12,7 +12,7 @@
     <!-- Make note, without actually knowing what's included in the SigningConfig,
          we just assume that everything in the output dir is, and treat them
          as inputs so that we rerun packaging if they change. -->
-    <PackageAssets Include="$(OutDir)\*.*" Exclude="*.log" />
+    <PackageAssets Include="$(OutDir)\netfx_NETCoreUWP.msi" Exclude="*.log" />
   </ItemGroup>
    
   <Target Name="Build" Outputs="@(PackageAssets)"  Condition="'$(BuildTemplates)' == 'true'">
