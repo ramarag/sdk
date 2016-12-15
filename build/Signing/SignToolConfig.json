@@ -2,9 +2,9 @@
   sign: [
     {
       "certificate": "Microsoft402",
-      "strongName": "MsSharedLib72",
+      "strongName": null,
       "values": [
-        "Microsoft.NET.Build.Tasks.dll"
+        "netfx_NETCoreUWP.msi"
       ]
     }
   ]
