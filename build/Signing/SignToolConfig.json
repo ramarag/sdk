@@ -2,7 +2,7 @@
   sign: [
     {
       "certificate": "Microsoft402",
-      "strongName": null,
+      "strongName": "MsSharedLib72",
       "values": [
         "Microsoft.NET.Build.Tasks.dll"
       ]
