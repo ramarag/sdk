@@ -1,7 +1,7 @@
 {
   sign: [
     {
-      "certificate": "Microsoft256",
+      "certificate": "Microsoft402",
       "strongName": null,
       "values": [
         "netfx_NETCoreUWP.msi"
