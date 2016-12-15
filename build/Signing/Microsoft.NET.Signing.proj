@@ -4,10 +4,11 @@
 
   <PropertyGroup>
     <SignTool>$(NuGet_Packages)\roslyntools.microsoft.signtool\0.2.0-beta\tools\SignTool.exe</SignTool>
+    <SigningConfig Condition="'$(BuildTemplates)' == 'true'">$(MSBuildThisFileDirectory)SignToolConfig.json</SigningConfig>
   </PropertyGroup>
 
   <ItemGroup>
-    <SigningConfig Include="$(MSBuildThisFileDirectory)SignToolConfig.json" Condition="'$(BuildTemplates)' == 'true'"/>
+    
 
     <!-- Make note, without actually knowing what's included in the SigningConfig,
          we just assume that everything in the output dir is, and treat them
