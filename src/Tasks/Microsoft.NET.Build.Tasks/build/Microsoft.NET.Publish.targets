@@ -23,7 +23,6 @@ Copyright (c) .NET Foundation. All rights reserved.
     
     <DefaultCopyToPublishDirectoryMetadata Condition="'$(DefaultCopyToPublishDirectoryMetadata)' == ''">true</DefaultCopyToPublishDirectoryMetadata>
     <_GetChildProjectCopyToPublishDirectoryItems Condition="'$(_GetChildProjectCopyToPublishDirectoryItems)' == ''">true</_GetChildProjectCopyToPublishDirectoryItems>
-
     <!-- publishing self-contained apps should publish the native host as $(AssemblyName).exe -->
     <RenamePublishedHost Condition=" '$(RenamePublishedHost)' == '' and '$(OutputType)' == 'Exe' and '$(RuntimeIdentifier)' != ''">true</RenamePublishedHost>
   </PropertyGroup>
@@ -234,7 +233,8 @@ Copyright (c) .NET Foundation. All rights reserved.
                               TargetFramework="$(TargetFrameworkMoniker)"
                               RuntimeIdentifier="$(RuntimeIdentifier)"
                               PlatformLibraryName="$(MicrosoftNETPlatformLibrary)"
-                              PrivateAssetsPackageReferences="@(PrivateAssetsPackageReference)">
+                              PrivateAssetsPackageReferences="@(PrivateAssetsPackageReference)"
+                              PreserveCacheLayout="$(PreserveCacheLayout)">
 
       <Output TaskParameter="AssembliesToPublish" ItemName="ResolvedAssembliesToPublish" />
 

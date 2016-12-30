@@ -31,6 +31,19 @@ namespace Microsoft.NET.Build.Tasks
             return _packagePathResolver.GetPackageDirectory(packageId, version);
         }
 
+        public string GetPackageDirectory(string packageId, NuGetVersion version, out string packageRoot)
+        {
+            string packageDir = null;
+            packageRoot = null;
+            var pkginfo = _packagePathResolver.GetPackageInfo(packageId,version);
+            if (pkginfo != null)
+            {
+                packageDir  = pkginfo.PathResolver.GetInstallPath(packageId, version);
+                packageRoot = pkginfo.PathResolver.GetVersionListPath("");  //TODO Check with nuget  if this is the correct way to get the package root
+            }
+            return packageDir;
+        }
+
         public static NuGetPackageResolver CreateResolver(LockFile lockFile, string projectPath)
         {
             NuGetPackageResolver packageResolver;
