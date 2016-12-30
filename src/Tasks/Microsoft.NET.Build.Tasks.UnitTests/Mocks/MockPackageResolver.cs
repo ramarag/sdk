@@ -14,9 +14,13 @@ namespace Microsoft.NET.Build.Tasks.UnitTests
         {
             _root = root;
         }
-
         public string GetPackageDirectory(string packageId, NuGetVersion version)
         {
+            return Path.Combine(_root, packageId, version.ToNormalizedString(), "path");
+        }
+        public string GetPackageDirectory(string packageId, NuGetVersion version, out string packageRoot)
+        {
+            packageRoot = _root;
             return Path.Combine(_root, packageId, version.ToNormalizedString(), "path");
         }
     }

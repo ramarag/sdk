@@ -2,7 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.IO;
-
+using System;
 namespace Microsoft.NET.Build.Tasks
 {
     public class ResolvedFile
@@ -10,7 +10,7 @@ namespace Microsoft.NET.Build.Tasks
         public string SourcePath { get; }
 
         public string DestinationSubDirectory { get; }
-
+        public string AssetType { get; }
         public string FileName
         {
             get { return Path.GetFileName(SourcePath); }
@@ -26,10 +26,11 @@ namespace Microsoft.NET.Build.Tasks
             }
         }
 
-        public ResolvedFile(string sourcePath, string destinationSubDirectory)
+        public ResolvedFile(string sourcePath, string destinationSubDirectory, string assetType = null)
         {
             SourcePath = Path.GetFullPath(sourcePath);
             DestinationSubDirectory = destinationSubDirectory;
+            AssetType = String.IsNullOrEmpty(assetType) ? String.Empty : assetType.ToLower();
         }
 
         public override bool Equals(object obj)
