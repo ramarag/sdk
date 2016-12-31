@@ -64,27 +64,28 @@ Copyright (c) .NET Foundation. All rights reserved.
     ============================================================
     -->
   <Target Name="CopyFilesToCacheDirectory"
-          DependsOnTargets="_CopyResolvedFilesToPublishPreserveNewest;
-                            _CopyResolvedFilesToPublishAlways" />
+          DependsOnTargets="_CopyResolvedManagedFiles;
+                            _CopyResolvedUnManagedFiles" />
 
   <!--
     ============================================================
-                                        _CopyResolvedFilesToPublishPreserveNewest
+                                        _CopyResolvedManagedFiles
 
-    Copy _ResolvedFileToPublishPreserveNewest items to the publish directory.
+    Copy _ManagedResolvedFileToPublish items to the publish directory.
     ============================================================
     -->
-  <Target Name="_CopyResolvedFilesToPublishPreserveNewest"
-          DependsOnTargets="_ComputeResolvedFilesToPublishTypes"
-          Inputs="@(_ResolvedFileToPublishPreserveNewest)"
-          Outputs="@(_ResolvedFileToPublishPreserveNewest->'$(PublishDir)%(RelativePath)')">
+  <Target Name="_CopyResolvedManagedFiles"
+          DependsOnTargets="_ComputeResolvedFilesToCachTypes;
+                            _RunOptimizer"
+          Inputs="@(_ManagedResolvedFileToPublish)"
+          Outputs="@(_ManagedResolvedFileToPublish->'$(PublishDir)%(RecursiveDir)%(Fileame)%(Extension)')">
 
     <!--
         Not using SkipUnchangedFiles="true" because the application may want to change
         one of these files and not have an incremental build replace it.
         -->
-    <Copy SourceFiles = "@(_ResolvedFileToPublishPreserveNewest)"
-          DestinationFiles="$(PublishDir)%(_ResolvedFileToPublishPreserveNewest.RelativePath)"
+    <Copy SourceFiles = "@(_ManagedResolvedFileToPublish)"
+          DestinationFiles="$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)"
           OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
           Retries="$(CopyRetryCount)"
           RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
@@ -99,20 +100,20 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   <!--
     ============================================================
-                                        _CopyResolvedFilesToPublishAlways
+                                        _CopyResolvedUnManagedFiles
 
-    Copy _ResolvedFileToPublishAlways items to the publish directory.
+    Copy _UnManagedResolvedFileToPublish items to the publish directory.
     ============================================================
     -->
-  <Target Name="_CopyResolvedFilesToPublishAlways"
-          DependsOnTargets="_ComputeResolvedFilesToPublishTypes">
+  <Target Name="_CopyResolvedUnManagedFiles"
+          DependsOnTargets="_ComputeResolvedFilesToCachTypes">
 
     <!--
         Not using SkipUnchangedFiles="true" because the application may want to change
         one of these files and not have an incremental build replace it.
         -->
-    <Copy SourceFiles = "@(_ResolvedFileToPublishAlways)"
-          DestinationFiles="$(PublishDir)%(_ResolvedFileToPublishAlways.RelativePath)"
+    <Copy SourceFiles = "@(_UnManagedResolvedFileToPublish)"
+          DestinationFiles="$(PublishDir)%(_UnManagedResolvedFileToPublish.DestinationSubPath)"
           OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
           Retries="$(CopyRetryCount)"
           RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
@@ -127,18 +128,18 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   <!--
     ============================================================
-                                        _ComputeResolvedFilesToPublishTypes
+                                        _ComputeResolvedFilesToCachTypes
 
     Splits ResolvedFileToPublish items into 'PreserveNewest' and 'Always' buckets.
     ============================================================
     -->
-  <Target Name="_ComputeResolvedFilesToPublishTypes">
+  <Target Name="_ComputeResolvedFilesToCachTypes">
     <ItemGroup>
-      <_ResolvedFileToPublishPreserveNewest Include="@(ResolvedFileToPublish)"
-                                             Condition="'%(ResolvedFileToPublish.CopyToPublishDirectory)'=='PreserveNewest'" />
+      <_ManagedResolvedFileToPublishCandidates Include="@(ResolvedFileToPublish)"
+                                             Condition="'%(ResolvedFileToPublish.AssetType)'=='runtime'" />
 
-      <_ResolvedFileToPublishAlways Include="@(ResolvedFileToPublish)"
-                                     Condition="'%(ResolvedFileToPublish.CopyToPublishDirectory)'=='Always'" />
+      <_UnManagedResolvedFileToPublish Include="@(ResolvedFileToPublish)"
+                                     Condition="'%(ResolvedFileToPublish.CopyToPublishDirectory)'!='Always'" />
     </ItemGroup>
   </Target>
 
@@ -152,8 +153,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     -->
   <Target Name="ComputeFilesToCache"
           DependsOnTargets="_ComputeNetPublishAssets;
-                            _ComputeCopyToPublishDirectoryItems;
-                            _RunOptimizer">
+                            _ComputeCopyToPublishDirectoryItems">
 
     <PropertyGroup>
       <CopyBuildOutputToPublishDirectory Condition="'$(CopyBuildOutputToPublishDirectory)'==''">true</CopyBuildOutputToPublishDirectory>
@@ -164,7 +164,6 @@ Copyright (c) .NET Foundation. All rights reserved.
 
       <!-- Copy all the assemblies -->
       <ResolvedFileToPublish Include="@(ResolvedAssembliesToPublish)">
-        <RelativePath>%(ResolvedAssembliesToPublish.DestinationSubPath)</RelativePath>
       </ResolvedFileToPublish>
     </ItemGroup>
 
@@ -177,7 +176,65 @@ Copyright (c) .NET Foundation. All rights reserved.
     Start the optimization face
     ============================================================
     -->
-  <Target Name="_RunOptimizer">
+  <Target Name="_RunOptimizer"
+          DependsOnTargets="_ComputeResolvedFilesToCachTypes">
+ 
+<!-- Create a Project to Restore Crossgen --> 
+  <PropertyGroup>
+     <_CrossgenProjContent>
+        <![CDATA[
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="$(MSBuildToolsVersion)">
+  <PropertyGroup>
+      <TargetFramework>$(TargetFramework)</TargetFramework>
+      <RuntimeIdentifier>$(RuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
+  <ItemGroup>
+       <PackageReference Include="Microsoft.NETCore.App" Version="$(_ShortFrameworkVersion)" />
+  </ItemGroup>
+
+</Project>        
+
+]]>
+     </_CrossgenProjContent>
+  </PropertyGroup>
+
+  <PropertyGroup>
+     <_CrossProjFileDir>$(TEMP)\Crossgen_$(_ShortFrameworkIdentifier)_$(_ShortFrameworkVersion)</_CrossProjFileDir>
+     <_RuntimeDir>$(_CrossProjFileDir)\runtime</_RuntimeDir>
+     <_CrossProjFile>$(_CrossProjFileDir)\Crossgen.csproj</_CrossProjFile>
+     <_CrossProjAssetsFile>$(_CrossProjFileDir)\obj\project.assets.json</_CrossProjAssetsFile>
+  </PropertyGroup>
+    
+  <MakeDir  Directories="$(_CrossProjFileDir)"/>
+  <MakeDir  Directories="$(_RuntimeDir)"/>
+  <WriteLinesToFile
+      File="$(_CrossProjFile)"
+      Lines="$(_CrossgenProjContent)"
+      Overwrite="true" />
+<!-- Restore Crossgen-->
+<MSBuild Projects="$(MSBuildProjectFile)"
+             Targets="Restore"
+             Properties="RestoreGraphProjectInput=$(_CrossProjFile);ProjectAssetsFile=$(_CrossProjAssetsFile)"/>
+
+<!-- Publish Crossgen to temp directory -->
+<!-- Copy manged files to temp directory maintaining the structure -->
+    <Copy SourceFiles = "@(_ManagedResolvedFileToPublishCandidates)"
+          DestinationFiles="$(_RuntimeDir)\%(_ManagedResolvedFileToPublishCandidates.DestinationSubPath)"
+          OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
+          Retries="$(CopyRetryCount)"
+          RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
+          UseHardlinksIfPossible="$(CreateHardLinksForPublishFilesIfPossible)"
+          UseSymboliclinksIfPossible="$(CreateSymbolicLinksForPublishFilesIfPossible)">
+
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
+    </Copy>
+<!-- CrossGen the assemblies in place -->
+
+<!-- Copy by proxy the directory structure to PublishDir-->
+
+    <ItemGroup>
+      <_ManagedResolvedFileToPublish Include="$(_RuntimeDir)\**\*.*" />   <!-- Change the candidates to the temp folder where crossgen operated on them -->
+    </ItemGroup>
   </Target>
 
 

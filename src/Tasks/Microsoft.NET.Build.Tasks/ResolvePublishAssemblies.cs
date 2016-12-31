@@ -61,7 +61,7 @@ namespace Microsoft.NET.Build.Tasks
             {
                 TaskItem item = new TaskItem(resolvedAssembly.SourcePath);
                 item.SetMetadata("DestinationSubPath", resolvedAssembly.DestinationSubPath);
-
+                item.SetMetadata("AssetType", resolvedAssembly.AssetType);
                 _assembliesToPublish.Add(item);
             }
         }
