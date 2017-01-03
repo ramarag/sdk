@@ -171,5 +171,11 @@ namespace Microsoft.NET.Build.Tasks
 
             return privateAssetsToExclude;
         }
+
+        public LockFileTargetLibrary GetLibraries(string packageName)
+        {
+            IEnumerable<LockFileTargetLibrary> runtimeLibraries = _lockFileTarget.Libraries;
+            return _lockFileTarget.GetLibrary(packageName);
+        }
     }
 }
