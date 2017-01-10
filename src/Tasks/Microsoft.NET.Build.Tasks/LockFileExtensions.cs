@@ -16,7 +16,8 @@ namespace Microsoft.NET.Build.Tasks
             this LockFile lockFile,
             NuGetFramework framework,
             string runtime,
-            string platformLibraryName)
+            string platformLibraryName,
+            LockFile filterlockFile = null)
         {
             if (lockFile == null)
             {
@@ -28,6 +29,12 @@ namespace Microsoft.NET.Build.Tasks
             }
 
             LockFileTarget lockFileTarget = lockFile.GetTarget(framework, runtime);
+            LockFileTarget filterlockFileTarget = null;
+
+            if (filterlockFile != null)
+            {
+                filterlockFileTarget = filterlockFile.GetTarget(framework, runtime);
+            }
 
             if (lockFileTarget == null)
             {
@@ -39,7 +46,7 @@ namespace Microsoft.NET.Build.Tasks
                 throw new BuildErrorException(Strings.AssetsFileMissingTarget, lockFile.Path, targetMoniker, framework.GetShortFolderName(), runtime);
             }
 
-            return new ProjectContext(lockFile, lockFileTarget, platformLibraryName);
+            return new ProjectContext(lockFile, lockFileTarget, platformLibraryName, filterlockFileTarget);
         }
 
         public static LockFileTargetLibrary GetLibrary(this LockFileTarget lockFileTarget, string libraryName)
@@ -52,6 +59,38 @@ namespace Microsoft.NET.Build.Tasks
             return lockFileTarget
                 .Libraries
                 .FirstOrDefault(e => e.Name.Equals(libraryName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static HashSet<string> GetIntersetction(
+            IDictionary<string, LockFileTargetLibrary> coll1,
+            IDictionary<string, LockFileTargetLibrary> coll2)
+        {
+            var exclusionList = new HashSet<string>();
+
+            IDictionary<string, LockFileTargetLibrary> iter = coll1;
+            IDictionary<string, LockFileTargetLibrary> lookup = coll2;
+
+            if (coll1.Count > coll2.Count)
+            {
+                iter = coll2;
+                lookup = coll1;
+            }
+
+            foreach( string key in iter.Keys)
+            {
+                LockFileTargetLibrary library = lookup[key];
+                if (library != null)
+                {
+                    LockFileTargetLibrary dependency = iter[key];
+
+                    if (library.Version.Equals(dependency.Version))
+                    {
+                        exclusionList.Add(key);
+                    }
+                }
+            }
+           
+            return exclusionList;
         }
 
         public static HashSet<string> GetPlatformExclusionList(

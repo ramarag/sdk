@@ -30,7 +30,7 @@ namespace Microsoft.NET.Build.Tasks
             _preserveCacheLayout = String.IsNullOrEmpty(cond) ? false : cond.ToLowerInvariant().Equals("true");
             return this;
         }
-
+       
         public IEnumerable<ResolvedFile> Resolve(ProjectContext projectContext)
         {
             List<ResolvedFile> results = new List<ResolvedFile>();

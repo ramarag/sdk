@@ -227,6 +227,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   <UsingTask TaskName="ResolvePublishAssemblies" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
   <Target Name="RunResolvePublishAssemblies"
           DependsOnTargets="ComputePrivateAssetsPackageReferences;
+                            ComputeAssembliesToBeFiltered;
                             _DefaultMicrosoftNETPlatformLibrary">
 
     <ResolvePublishAssemblies ProjectPath="$(MSBuildProjectFullPath)"
@@ -235,11 +236,37 @@ Copyright (c) .NET Foundation. All rights reserved.
                               RuntimeIdentifier="$(RuntimeIdentifier)"
                               PlatformLibraryName="$(MicrosoftNETPlatformLibrary)"
                               PrivateAssetsPackageReferences="@(PrivateAssetsPackageReference)"
+                              FilterProjectAssetsFile="$(FilterProjectAssetsFile)"
                               PreserveCacheLayout="$(PreserveCacheLayout)">
 
       <Output TaskParameter="AssembliesToPublish" ItemName="ResolvedAssembliesToPublish" />
 
     </ResolvePublishAssemblies>
+
+  </Target>
+  
+ <!--
+    ============================================================
+                     RunResolvePublishAssemblies
+
+    Gets the assemblies to be copied to the publish directory
+    ============================================================
+    -->
+
+  <Target Name="ComputeAssembliesToBeFiltered"
+          Condition="'$(FilterProjFile)'!=''" >
+    <PropertyGroup>
+      <FilterProFileDir>$(MSBuildProjectExtensionsPath)\filterprofile</FilterProFileDir>
+      <FilterProjectAssetsFile>$(FilterProFileDir)\project.assets.json</FilterProjectAssetsFile>
+    </PropertyGroup>
+    <MSBuild Projects="$(FilterProjFile)"
+             Targets="Restore"
+             Properties="RestoreGraphProjectInput=$(FilterProjFile);
+                         RestoreOutputPath=$(FilterProFileDir);
+                         TargetFramework=$(TargetFramework);
+                         RuntimeIdentifier=$(RuntimeIdentifier)"/>
+
+
 
   </Target>
 

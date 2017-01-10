@@ -12,6 +12,7 @@ namespace Microsoft.NET.Build.Tasks
     public class ProjectContext
     {
         private readonly LockFile _lockFile;
+        private readonly LockFileTarget _filterlockFileTarget;
         private readonly LockFileTarget _lockFileTarget;
         private readonly string _platformLibraryName;
 
@@ -21,9 +22,10 @@ namespace Microsoft.NET.Build.Tasks
         public LockFile LockFile => _lockFile;
         public LockFileTarget LockFileTarget => _lockFileTarget;
 
-        public ProjectContext(LockFile lockFile, LockFileTarget lockFileTarget, string platformLibraryName)
+        public ProjectContext(LockFile lockFile, LockFileTarget lockFileTarget, string platformLibraryName, LockFileTarget filterlockFileTarget = null)
         {
             _lockFile = lockFile;
+            _filterlockFileTarget = filterlockFileTarget;
             _lockFileTarget = lockFileTarget;
             _platformLibraryName = platformLibraryName;
 
@@ -52,6 +54,15 @@ namespace Microsoft.NET.Build.Tasks
                         libraryLookup);
 
                 allExclusionList.UnionWith(privateAssetsExclusionList);
+            }
+
+            if(_filterlockFileTarget != null)
+            {
+                IEnumerable<LockFileTargetLibrary> filterLibraries = _filterlockFileTarget.Libraries;
+                Dictionary<string, LockFileTargetLibrary> filterLookup =
+                filterLibraries.ToDictionary(e => e.Name, StringComparer.OrdinalIgnoreCase);
+
+                allExclusionList.UnionWith(LockFileExtensions.GetIntersetction(filterLookup, libraryLookup));
             }
 
             return runtimeLibraries.Filter(allExclusionList).ToArray();
