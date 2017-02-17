@@ -237,6 +237,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                               RuntimeIdentifier="$(RuntimeIdentifier)"
                               PlatformLibraryName="$(MicrosoftNETPlatformLibrary)"
                               PrivateAssetsPackageReferences="@(PrivateAssetsPackageReference)"
+                              DoNotTrackPackageAsResolved="$(DoNotTrackPackageAsResolved)"
                               PreserveCacheLayout="$(PreserveCacheLayout)">
 
       <Output TaskParameter="AssembliesToPublish" ItemName="ResolvedAssembliesToPublish" />

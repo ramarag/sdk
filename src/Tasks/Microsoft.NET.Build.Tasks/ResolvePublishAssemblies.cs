@@ -32,6 +32,8 @@ namespace Microsoft.NET.Build.Tasks
 
         public bool PreserveCacheLayout { get; set; }
 
+        public bool DoNotTrackPackageAsResolved { get; set; }
+
         public string FilterProjectAssetsFile { get; set; }
 
         /// <summary>
@@ -67,6 +69,7 @@ namespace Microsoft.NET.Build.Tasks
                 new PublishAssembliesResolver(packageResolver)
                     .WithPrivateAssets(privateAssetsPackageIds)
                     .WithPreserveCacheLayout(PreserveCacheLayout)
+                    .WithPackageTracking(DoNotTrackPackageAsResolved)
                     .Resolve(projectContext);
 
             foreach (ResolvedFile resolvedAssembly in resolvedAssemblies)

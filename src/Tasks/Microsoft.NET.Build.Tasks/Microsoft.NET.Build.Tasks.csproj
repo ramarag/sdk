@@ -84,6 +84,8 @@
     <Compile Include="FileGroup.cs" />
     <Compile Include="MetadataKeys.cs" />
     <Compile Include="ResolvePackageDependencies.cs" />
+    <Compile Include="PackageInfoHelpers.cs" />
+    <Compile Include="GetListofResolvedPackages.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' != 'net46'">

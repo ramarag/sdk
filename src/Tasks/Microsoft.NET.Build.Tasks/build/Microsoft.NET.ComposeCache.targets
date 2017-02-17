@@ -23,11 +23,125 @@ Copyright (c) .NET Foundation. All rights reserved.
   </PropertyGroup>
 
   <Target Name="ComposeCache"
-          DependsOnTargets="PrepareForComposeCache;
-                            RestoreForComposeCache;
-                            ComputeAndCopyFilesToCacheDirectory"/>
-  
+          DependsOnTargets="_InitializeBasicProps;
+                            PrepareForComposeCache;
+                            PrepOptimizer;
+                            CacheWorkerMain;
+                            CacheFinalizer;"/>
 
+
+  <!--
+    ============================================================
+                                        CacheWorkerMain
+
+   Spins of the compose mappers
+    ============================================================
+    -->
+
+  <Target Name="CacheWorkerMain">
+    
+    <CreateItem Include="$(AdditionalProjects)">
+      <Output ItemName="_AllProjects" TaskParameter="Include" />
+    </CreateItem>
+    
+    <ItemGroup>
+      <_AllProjects Include ="$(MSBuildProjectFullPath)"/>
+    </ItemGroup>
+    <MSBuild Projects="%(_AllProjects.Identity)"
+                 Targets="CacheWorkerMapper"
+                 Properties="ComposeWorkingDir=$(ComposeWorkingDir);
+                             PublishDir=$(PublishDir);
+                             TargetFramework=$(_TFM);
+                             _JitPath=$(_JitPath);
+                             _Crossgen=$(_Crossgen);
+                             SkipUnchangedFiles=$(SkipUnchangedFiles);
+                             PreserveCacheLayout=$(PreserveCacheLayout)"
+                  ContinueOnError="WarnAndContinue"  />
+   </Target>
+  <!--
+    ============================================================
+                                        CacheWorkerMapper
+
+   Spins of the compose mappers
+    ============================================================
+    -->
+
+  <Target Name="CacheWorkerMapper">
+   
+    <ItemGroup>
+      <PackageToRestore Include ="@(PackageReference)" Condition="'%(PackageReference.IsImplicitlyDefined)' != 'true'"/>
+    </ItemGroup>
+    
+    <MSBuild Projects="$(MSBuildProjectFullPath)"
+                 Targets="CacheWorker"
+                 Properties="_RPackageName=%(PackageToRestore.Identity);
+                             _RPackageVersion=%(PackageToRestore.Version);
+                             ComposeWorkingDir=$(ComposeWorkingDir);
+                             PublishDir=$(PublishDir);
+                             TargetFramework=$(TargetFramework);
+                             _JitPath=$(_JitPath);
+                             _Crossgen=$(_Crossgen);
+                             SkipUnchangedFiles=$(SkipUnchangedFiles);
+                             PreserveCacheLayout=$(PreserveCacheLayout)"
+                  ContinueOnError="WarnAndContinue"
+             />
+  </Target>
+  
+  <!--TODO - if $(CacheWorkerWorkingDir) exists some other worker is doing the job, Dedupe the root of a restore graph-->
+  <Target Name="CacheWorker" 
+          DependsOnTargets="_InitializeBasicProps;
+                            RestoreForComposeCache;
+                            ComputeAndCopyFilesToCacheDirectory;"/>
+  
+  <!--
+    ============================================================
+                                        CacheFinalizer
+
+   Cleansup and produces artifacts after Completion of cache
+    ============================================================
+    -->
+  
+  <UsingTask TaskName="GetListofResolvedPackages" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
+  <Target Name="CacheFinalizer">
+    
+    <Message Text="Files were composed in $(PublishDir)"
+                 Importance="high"/>
+
+    <GetListofResolvedPackages>
+    <Output TaskParameter="PackagesResolved" ItemName="ListOfPackages" />
+    </GetListofResolvedPackages>
+
+    <ItemGroup>
+      <ListOfPackageReference Include="@(ListOfPackages -> '%20%20%20%20%20&lt;PackageReference Include=&quot;%(Identity)&quot;  Version =&quot;%(Version)&quot;/&gt;')"/>
+    </ItemGroup>
+    <PropertyGroup>
+     <_CacheArtifactContent>
+      <![CDATA[
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="$(MSBuildToolsVersion)">
+  <ItemGroup>
+@(ListOfPackageReference)
+  </ItemGroup>
+</Project>    
+]]>
+       </_CacheArtifactContent>
+      </PropertyGroup>
+    <WriteLinesToFile
+             File="$(CacheArtifactXml)"
+             Lines="$(_CacheArtifactContent)"
+             Overwrite="true" />
+    
+    <RemoveDir
+        Condition="'$(PreserveComposeWorkingDir)' != 'true'"
+        Directories="$(ComposeWorkingDir)" />
+  </Target>
+
+  <Target Name="_InitializeBasicProps">
+    <PropertyGroup>
+      <PathSeparator>$([System.IO.Path]::PathSeparator)</PathSeparator>
+      <DirectorySeparatorChar>$([System.IO.Path]::DirectorySeparatorChar)</DirectorySeparatorChar>
+      <TEMP Condition="'$(TEMP)' == ''">$([System.IO.Path]::GetTempPath())</TEMP>
+    </PropertyGroup>
+  </Target>
   <!--
     ============================================================
                                         PrepareForComposeCache
@@ -41,8 +155,7 @@ Copyright (c) .NET Foundation. All rights reserved.
       <PreserveCacheLayout Condition="'$(PreserveCacheLayout)' == ''">true</PreserveCacheLayout>
       <SkipOptimization Condition="'$(RuntimeIdentifier)' == ''">true</SkipOptimization>
       <_TFM Condition="'$(_TFM)' == ''">$(TargetFramework)</_TFM>
-      <PathSeparator>$([System.IO.Path]::PathSeparator)</PathSeparator>
-      <DirectorySeparatorChar>$([System.IO.Path]::DirectorySeparatorChar)</DirectorySeparatorChar>
+      <SkipUnchangedFiles Condition="'$(SkipUnchangedFiles)' == ''">true</SkipUnchangedFiles>
     </PropertyGroup>
 
     <NETSdkError Condition="'$(RuntimeIdentifier)' =='' and '$(_PureManagedAssets)' == ''"
@@ -58,12 +171,11 @@ Copyright (c) .NET Foundation. All rights reserved.
       <ComposeDir Condition="'$(ComposeDir)' != '' and '$(DoNotDecorateComposeDir)' != 'true'">$([System.IO.Path]::Combine($(ComposeDir), $(PlatformTarget)))</ComposeDir>
       <ComposeDir Condition="'$(ComposeDir)' == ''">$(DefaultComposeDir)</ComposeDir>
       <ComposeDir Condition="'$(DoNotDecorateComposeDir)' != 'true'">$([System.IO.Path]::Combine($(ComposeDir), $(_TFM)))</ComposeDir>
+      <CacheArtifactXml>$([System.IO.Path]::Combine($(ComposeDir),"artifact.xml"))</CacheArtifactXml>
       <PublishDir>$([System.IO.Path]::GetFullPath($(ComposeDir)))</PublishDir>
-      <TEMP Condition="'$(TEMP)' == ''">$([System.IO.Path]::GetTempPath())</TEMP>
       <_RandomFileName>$([System.IO.Path]::GetRandomFileName())</_RandomFileName>
       <ComposeWorkingDir Condition="'$(ComposeWorkingDir)' == ''">$([System.IO.Path]::Combine($(TEMP), $(_RandomFileName)))</ComposeWorkingDir>
       <ComposeWorkingDir>$([System.IO.Path]::GetFullPath($(ComposeWorkingDir)))</ComposeWorkingDir>
-      <_CrossProjFileDir>$([System.IO.Path]::Combine($(ComposeWorkingDir),"Optimize"))</_CrossProjFileDir>
       <!-- Ensure any PublishDir has a trailing slash, so it can be concatenated -->
       <PublishDir Condition="!HasTrailingSlash('$(PublishDir)')">$(PublishDir)\</PublishDir>
     </PropertyGroup>
@@ -77,27 +189,55 @@ Copyright (c) .NET Foundation. All rights reserved.
     <MakeDir Directories="$(PublishDir)" />
 
   </Target>
-  
+
+  <Target Name="PrepforRestoreForComposeCache">
+
+    <PropertyGroup>
+      <_RPackageVersion>$(_RPackageVersion.Replace('*','-'))</_RPackageVersion>
+      <CacheWorkerWorkingDir>$([System.IO.Path]::Combine($(ComposeWorkingDir),"$(_RPackageName)_$(_RPackageVersion)"))</CacheWorkerWorkingDir>
+      <_PackageProjFile>$([System.IO.Path]::Combine($(CacheWorkerWorkingDir), "Package.csproj"))</_PackageProjFile>
+      <ProjectAssetsFile>$(CacheWorkerWorkingDir)\project.assets.json</ProjectAssetsFile>
+      <_PackageProjContent>
+        <![CDATA[
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="$(MSBuildToolsVersion)">
+  <ItemGroup>
+    <PackageReference Include="$(_RPackageName)"  Version ="$(_RPackageVersion)"/>
+  </ItemGroup>
+</Project>    
+]]>
+      </_PackageProjContent>
+    </PropertyGroup>
+    
+  </Target>
   <!--
     ============================================================
                                         RestoreForComposeCache
 
-    Preps the Restore Task.
+    Restores the package
     ============================================================
     -->
-  <Target Name="RestoreForComposeCache">
+  <Target Name="RestoreForComposeCache"
+          DependsOnTargets="PrepforRestoreForComposeCache;">
 
-    <PropertyGroup>
-      <ProjectAssetsFile>$(ComposeWorkingDir)\project.assets.json</ProjectAssetsFile>
-    </PropertyGroup>
-
-    <MSBuild Projects="$(MSBuildProjectFullPath)"
+    <Error
+           Text=" Redundant root package specified"
+           Code="0"
+           Condition="Exists($(CacheWorkerWorkingDir))" />
+    
+    <MakeDir Directories="$(CacheWorkerWorkingDir)" />
+    
+    <!-- Create a Project to Restore Package -->
+    <WriteLinesToFile
+            File="$(_PackageProjFile)"
+            Lines="$(_PackageProjContent)"
+            Overwrite="true" />
+    
+    <MSBuild Projects="$(_PackageProjFile)"
                  Targets="Restore"
-                 Properties="RestoreGraphProjectInput=$(MSBuildProjectFullPath);
+                 Properties="RestoreGraphProjectInput=$(_PackageProjFile);
                              DisableImplicitFrameworkReferences=true;
-                             RestoreOutputPath=$(ComposeWorkingDir);
-                             TargetFramework=$(_TFM);"/>
-
+                             RestoreOutputPath=$(CacheWorkerWorkingDir);
+                             TargetFramework=$(TargetFramework);"/>
   </Target>
 
 
@@ -120,36 +260,27 @@ Copyright (c) .NET Foundation. All rights reserved.
     ============================================================
     -->
   <Target Name="CopyFilesToCacheDirectory"
-          DependsOnTargets="_CopyResolvedManagedFiles;
-                            _CopyResolvedUnOptimizedFiles">
-
-    <Message Text="Files were composed in $(PublishDir)"
-             Importance="high"/>
-    <RemoveDir
-        Condition="'$(PreserveComposeWorkingDir)' != 'true'"
-        Directories="$(ComposeWorkingDir)" />
-  </Target>
+          DependsOnTargets="_CopyResolvedOptimizedFiles;
+                            _CopyResolvedUnOptimizedFiles"/>
 
   <!--
     ============================================================
-                                        _CopyResolvedManagedFiles
+                                        _CopyResolvedOptimizedFiles
 
-    Copy _ManagedResolvedFileToPublish items to the publish directory.
+    Copy _CopyResolvedOptimizedFiles items to the publish directory.
     ============================================================
     -->
-  <Target Name="_CopyResolvedManagedFiles"
-          DependsOnTargets="_ComputeResolvedFilesToCacheTypes;
-                            _RunOptimizer"
+  <Target Name="_CopyResolvedOptimizedFiles"
+          DependsOnTargets="_ComputeResolvedFilesToCacheTypes;"
           Inputs="@(_ManagedResolvedFileToPublish)"
           Outputs="@(_ManagedResolvedFileToPublish->'$(PublishDir)%(RecursiveDir)%(Fileame)%(Extension)')">
 
     <Copy SourceFiles = "@(_ManagedResolvedFileToPublish)"
           DestinationFiles="$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)"
+          Condition ="!Exists($(PublishDir)%(RecursiveDir)%(Filename)%(Extension))"
           OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
           Retries="$(CopyRetryCount)"
-          RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
-          UseHardlinksIfPossible="$(CreateHardLinksForPublishFilesIfPossible)"
-          UseSymboliclinksIfPossible="$(CreateSymbolicLinksForPublishFilesIfPossible)">
+          RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)">
 
       <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
 
@@ -165,15 +296,15 @@ Copyright (c) .NET Foundation. All rights reserved.
     ============================================================
     -->
   <Target Name="_CopyResolvedUnOptimizedFiles"
-          DependsOnTargets="_ComputeResolvedFilesToCacheTypes">
+          DependsOnTargets="_ComputeResolvedFilesToCacheTypes;
+                            _RunOptimizer">
 
     <Copy SourceFiles = "@(_UnOptimizedResolvedFileToPublish)"
           DestinationFiles="$(PublishDir)%(_UnOptimizedResolvedFileToPublish.DestinationSubPath)"
           OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
           Retries="$(CopyRetryCount)"
           RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
-          UseHardlinksIfPossible="$(CreateHardLinksForPublishFilesIfPossible)"
-          UseSymboliclinksIfPossible="$(CreateSymbolicLinksForPublishFilesIfPossible)">
+          SkipUnchangedFiles="$(SkipUnchangedFiles)">
 
       <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
 

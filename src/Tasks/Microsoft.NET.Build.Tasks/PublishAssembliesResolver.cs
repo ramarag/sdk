@@ -3,17 +3,22 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using NuGet.Frameworks;
 using NuGet.ProjectModel;
+using PackageInfoHelpers;
 
 namespace Microsoft.NET.Build.Tasks
 {
-    public class PublishAssembliesResolver
+public class PublishAssembliesResolver
     {
+        private static ConcurrentDictionary<PackageInfo, byte> allResolvedPackages = new ConcurrentDictionary<PackageInfo, byte>();
+        private static volatile bool hasallResolvedLibrariesBeenDumped = false;
         private readonly IPackageResolver _packageResolver;
         private IEnumerable<string> _privateAssetPackageIds;
         private bool _preserveCacheLayout;
+        private bool _doNotTrackPackageAsResolved;
 
         public PublishAssembliesResolver(IPackageResolver packageResolver)
         {
@@ -31,15 +36,36 @@ namespace Microsoft.NET.Build.Tasks
             return this;
         }
 
+        public PublishAssembliesResolver WithPackageTracking(bool doNotTrackPackageAsResolved)
+        {
+            _doNotTrackPackageAsResolved = doNotTrackPackageAsResolved;
+            return this;
+        }
+        
+
+        public static IEnumerable<PackageInfo> GetResolvedPackageList()
+        {
+            return allResolvedPackages.Keys;
+        }
         public IEnumerable<ResolvedFile> Resolve(ProjectContext projectContext)
         {
             List<ResolvedFile> results = new List<ResolvedFile>();
+
+            if (hasallResolvedLibrariesBeenDumped)
+            {
+                throw new BuildErrorException("DumpResolved has been called and we are still resolving the packages");
+            }
 
             foreach (LockFileTargetLibrary targetLibrary in projectContext.GetRuntimeLibraries(_privateAssetPackageIds))
             {
                 if (targetLibrary.Type != "package")
                 {
                     continue;
+                }
+
+                if (!_doNotTrackPackageAsResolved)
+                {
+                    allResolvedPackages.TryAdd(new PackageInfo(targetLibrary.Name, targetLibrary.Version.ToString()), default(byte));
                 }
 
                 string pkgRoot;
