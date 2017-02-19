@@ -125,7 +125,7 @@ namespace Microsoft.NET.Publish.Tests
                 .Restore("", $"/p:TargetFramework={tfm}");
 
             string filterProjDir = _testAssetsManager.GetAndValidateTestProjectDirectory("NewtonsoftFilterProfile");
-            string filterProjFile = Path.Combine(filterProjDir, "NewtonsoftFilterProfile.csproj");
+            string filterProjFile = Path.Combine(filterProjDir, "NewtonsoftFilterProfile.xml");
 
             PublishCommand publishCommand = new PublishCommand(Stage0MSBuild, simpleDependenciesAsset.TestRoot);
             publishCommand
@@ -161,7 +161,7 @@ namespace Microsoft.NET.Publish.Tests
                 .Restore("", $"/p:RuntimeIdentifier={rid}");
 
             string filterProjDir = _testAssetsManager.GetAndValidateTestProjectDirectory("NewtonsoftFilterProfile");
-            string filterProjFile = Path.Combine(filterProjDir, "NewtonsoftFilterProfile.csproj");
+            string filterProjFile = Path.Combine(filterProjDir, "NewtonsoftFilterProfile.xml");
             
 
             PublishCommand publishCommand = new PublishCommand(Stage0MSBuild, simpleDependenciesAsset.TestRoot);
