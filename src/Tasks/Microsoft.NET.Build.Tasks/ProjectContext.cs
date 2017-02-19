@@ -6,13 +6,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NuGet.ProjectModel;
+using PackageInfoHelpers;
 
 namespace Microsoft.NET.Build.Tasks
 {
     public class ProjectContext
     {
         private readonly LockFile _lockFile;
-        private readonly LockFileTarget _filterlockFileTarget;
+        private readonly HashSet<PackageInfo> _packagesToBeFiltered;
         private readonly LockFileTarget _lockFileTarget;
         private readonly string _platformLibraryName;
 
@@ -22,10 +23,10 @@ namespace Microsoft.NET.Build.Tasks
         public LockFile LockFile => _lockFile;
         public LockFileTarget LockFileTarget => _lockFileTarget;
 
-        public ProjectContext(LockFile lockFile, LockFileTarget lockFileTarget, string platformLibraryName, LockFileTarget filterlockFileTarget = null)
+        public ProjectContext(LockFile lockFile, LockFileTarget lockFileTarget, string platformLibraryName, HashSet<PackageInfo> packagesToBeFiltered = null)
         {
             _lockFile = lockFile;
-            _filterlockFileTarget = filterlockFileTarget;
+            _packagesToBeFiltered = packagesToBeFiltered;
             _lockFileTarget = lockFileTarget;
             _platformLibraryName = platformLibraryName;
 
@@ -56,10 +57,22 @@ namespace Microsoft.NET.Build.Tasks
                 allExclusionList.UnionWith(privateAssetsExclusionList);
             }
 
-            if(_filterlockFileTarget != null)
+            if(_packagesToBeFiltered != null)
             {
-                IEnumerable<LockFileTargetLibrary> filterLibraries = _filterlockFileTarget.Libraries;
-                Dictionary<string, LockFileTargetLibrary> filterLookup = filterLibraries.ToDictionary(e => e.Name, StringComparer.OrdinalIgnoreCase);
+                var filterLookup = new Dictionary<string, HashSet<PackageInfo>>();
+                foreach (var pkg in _packagesToBeFiltered)
+                {
+                    if (filterLookup.ContainsKey(pkg.Name))
+                    {
+                        filterLookup[pkg.Name].Add(pkg);
+                    }
+                    else
+                    {
+                        var valueSet = new HashSet<PackageInfo>();
+                        valueSet.Add(pkg);
+                        filterLookup.Add(pkg.Name, valueSet);
+                    }
+                }
 
                 allExclusionList.UnionWith(GetIntersection(filterLookup, libraryLookup));
             }
@@ -182,29 +195,25 @@ namespace Microsoft.NET.Build.Tasks
             return privateAssetsToExclude;
         }
         private static HashSet<string> GetIntersection(
-          IDictionary<string, LockFileTargetLibrary> collection1,
-          IDictionary<string, LockFileTargetLibrary> collection2)
+          IDictionary<string, HashSet<PackageInfo>> packagesToBeFiltered,
+          IDictionary<string, LockFileTargetLibrary> packagesToBePublished)
         {
             var exclusionList = new HashSet<string>();
-            var iterated = collection1;
-            var lookup = collection2;
-
-            if (collection1.Count > collection2.Count)
+            
+            foreach (var entry in packagesToBePublished)
             {
-                iterated = collection2;
-                lookup = collection1;
-            }
-            foreach (var entry in iterated)
-            {
-                LockFileTargetLibrary library = lookup[entry.Key];
 
-                if (library != null)
+                if (packagesToBeFiltered.ContainsKey(entry.Key))
                 {
+                    var librarySet = packagesToBeFiltered[entry.Key];
                     LockFileTargetLibrary dependency = entry.Value;
-
-                    if (library.Version.Equals(dependency.Version))
+                    foreach (var library in librarySet)
                     {
-                        exclusionList.Add(entry.Key);
+                        if (dependency.Version.ToString().Equals(library.Version))
+                        {
+                            exclusionList.Add(entry.Key);
+                            break;
+                        }
                     }
                 }
             }

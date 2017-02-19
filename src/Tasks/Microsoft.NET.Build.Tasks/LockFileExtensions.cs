@@ -7,7 +7,7 @@ using System.Linq;
 using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.ProjectModel;
-
+using PackageInfoHelpers;
 namespace Microsoft.NET.Build.Tasks
 {
     public static class LockFileExtensions
@@ -17,7 +17,7 @@ namespace Microsoft.NET.Build.Tasks
             NuGetFramework framework,
             string runtime,
             string platformLibraryName,
-            LockFile filterlockFile = null)
+            HashSet<PackageInfo> packagesToBeFiltered = null)
         {
             if (lockFile == null)
             {
@@ -29,12 +29,6 @@ namespace Microsoft.NET.Build.Tasks
             }
 
             LockFileTarget lockFileTarget = lockFile.GetTarget(framework, runtime);
-            LockFileTarget filterlockFileTarget = null;
-
-            if (filterlockFile != null)
-            {
-                filterlockFileTarget = filterlockFile.GetTarget(framework, runtime);
-            }
 
             if (lockFileTarget == null)
             {
@@ -46,7 +40,7 @@ namespace Microsoft.NET.Build.Tasks
                 throw new BuildErrorException(Strings.AssetsFileMissingTarget, lockFile.Path, targetMoniker, framework.GetShortFolderName(), runtime);
             }
 
-            return new ProjectContext(lockFile, lockFileTarget, platformLibraryName, filterlockFileTarget);
+            return new ProjectContext(lockFile, lockFileTarget, platformLibraryName, packagesToBeFiltered);
         }
 
         public static LockFileTargetLibrary GetLibrary(this LockFileTarget lockFileTarget, string libraryName)

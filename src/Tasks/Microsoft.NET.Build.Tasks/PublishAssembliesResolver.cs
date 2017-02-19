@@ -43,7 +43,7 @@ public class PublishAssembliesResolver
         }
         
 
-        public static IEnumerable<PackageInfo> GetResolvedPackageList()
+        internal static IEnumerable<PackageInfo> GetResolvedPackageList()
         {
             return allResolvedPackages.Keys;
         }

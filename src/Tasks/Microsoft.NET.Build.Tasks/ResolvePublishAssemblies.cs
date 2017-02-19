@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using NuGet.ProjectModel;
+using PackageInfoHelpers;
 
 namespace Microsoft.NET.Build.Tasks
 {
@@ -34,7 +35,7 @@ namespace Microsoft.NET.Build.Tasks
 
         public bool DoNotTrackPackageAsResolved { get; set; }
 
-        public string FilterProjectAssetsFile { get; set; }
+        public string FilterProjFiles { get; set; }
 
         /// <summary>
         /// All the assemblies to publish.
@@ -52,17 +53,18 @@ namespace Microsoft.NET.Build.Tasks
             IEnumerable<string> privateAssetsPackageIds = PackageReferenceConverter.GetPackageIds(PrivateAssetsPackageReferences);
             IPackageResolver packageResolver = NuGetPackageResolver.CreateResolver(lockFile, ProjectPath);
 
-            LockFile filterLockFile = null;
-            if (!string.IsNullOrEmpty(FilterProjectAssetsFile))
+            HashSet<PackageInfo> packagestoBeFiltered = null;
+            if (!string.IsNullOrEmpty(FilterProjFiles))
             {
-                filterLockFile = lockFileCache.GetLockFile(FilterProjectAssetsFile);
+                packagestoBeFiltered = CacheArtifactParser.Parse(FilterProjFiles);
 
             }
+
             ProjectContext projectContext = lockFile.CreateProjectContext(
                 NuGetUtils.ParseFrameworkName(TargetFramework),
                 RuntimeIdentifier,
                 PlatformLibraryName,
-                filterLockFile
+                packagestoBeFiltered
                 );
 
             IEnumerable<ResolvedFile> resolvedAssemblies =

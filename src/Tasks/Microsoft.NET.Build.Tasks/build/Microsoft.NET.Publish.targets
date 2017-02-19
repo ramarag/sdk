@@ -227,16 +227,15 @@ Copyright (c) .NET Foundation. All rights reserved.
   <UsingTask TaskName="ResolvePublishAssemblies" AssemblyFile="$(MicrosoftNETBuildTasksAssembly)" />
   <Target Name="RunResolvePublishAssemblies"
           DependsOnTargets="ComputePrivateAssetsPackageReferences;
-                            ComputePackagesToBeFiltered;
                             _DefaultMicrosoftNETPlatformLibrary">
 
     <ResolvePublishAssemblies ProjectPath="$(MSBuildProjectFullPath)"
                               AssetsFilePath="$(ProjectAssetsFile)"
-                              FilterProjectAssetsFile="$(FilterProjectAssetsFile)"
                               TargetFramework="$(TargetFrameworkMoniker)"
                               RuntimeIdentifier="$(RuntimeIdentifier)"
                               PlatformLibraryName="$(MicrosoftNETPlatformLibrary)"
                               PrivateAssetsPackageReferences="@(PrivateAssetsPackageReference)"
+                              FilterProjFiles="$(FilterProjFile)"
                               DoNotTrackPackageAsResolved="$(DoNotTrackPackageAsResolved)"
                               PreserveCacheLayout="$(PreserveCacheLayout)">
 
@@ -246,33 +245,6 @@ Copyright (c) .NET Foundation. All rights reserved.
 
   </Target>
   
- <!--
-    ============================================================
-                     ComputePackagesToBeFiltered
-
-    Gets the closure of all the specified packages in $(FilterProjFile)
-    These will be removed from the assets that are published
-    ============================================================
-    -->
-
-  <Target Name="ComputePackagesToBeFiltered"
-          Condition="'$(FilterProjFile)'!=''" >
-    <PropertyGroup>
-      <FilterProjFileDir>$(MSBuildProjectExtensionsPath)\filterprofile</FilterProjFileDir>
-      <FilterProjectAssetsFile>$(FilterProjFileDir)\project.assets.json</FilterProjectAssetsFile>
-    </PropertyGroup>
-    <MSBuild Projects="$(FilterProjFile)"
-             Targets="Restore"
-             Properties="RestoreGraphProjectInput=$(FilterProjFile);
-                         DisableImplicitFrameworkReferences=true;
-                         RestoreOutputPath=$(FilterProjFileDir);
-                         TargetFramework=$(TargetFramework);
-                         RuntimeIdentifier=$(RuntimeIdentifier)"/>
-
-
-
-  </Target>
-
   <!--
     ============================================================
                                         _ComputeCopyToPublishDirectoryItems
