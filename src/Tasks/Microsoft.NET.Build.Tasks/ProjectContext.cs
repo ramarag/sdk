@@ -196,10 +196,10 @@ namespace Microsoft.NET.Build.Tasks
             }
             foreach (var entry in iterated)
             {
-                LockFileTargetLibrary library = lookup[entry.Key];
 
-                if (library != null)
+                if (lookup.ContainsKey(entry.Key))
                 {
+                    LockFileTargetLibrary library = lookup[entry.Key];
                     LockFileTargetLibrary dependency = entry.Value;
 
                     if (library.Version.Equals(dependency.Version))
