@@ -3,11 +3,14 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using System.Globalization;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json;
 using NuGet.ProjectModel;
+using NuGet.Packaging.Core;
 
 namespace Microsoft.NET.Build.Tasks
 {
@@ -54,6 +57,8 @@ namespace Microsoft.NET.Build.Tasks
 
         public ITaskItem[] PrivateAssetsPackageReferences { get; set; }
 
+        public string[] FilterProjectFiles { get; set; }
+
         public bool IsSelfContained { get; set; }
 
         List<ITaskItem> _filesWritten = new List<ITaskItem>();
@@ -94,6 +99,34 @@ namespace Microsoft.NET.Build.Tasks
                 PlatformLibraryName,
                 IsSelfContained);
 
+            Dictionary<PackageIdentity, StringBuilder> packagesThatWhereFiltered = null;
+
+            if (FilterProjectFiles != null && FilterProjectFiles.Length > 0)
+            {
+                packagesThatWhereFiltered = new Dictionary<PackageIdentity,StringBuilder>();
+                foreach (var filterProjectFile in FilterProjectFiles)
+                {
+                    Log.LogMessage(MessageImportance.Low, string.Format(CultureInfo.CurrentCulture, Strings.ParsingFiles, filterProjectFile));
+                    var packagesSpecified = CacheArtifactParser.Parse(filterProjectFile);
+                    var filterFileName = Path.GetFileName(filterProjectFile);
+
+                    foreach (var pkg in packagesSpecified)
+                    {
+                        Log.LogMessage(MessageImportance.Low, string.Format(CultureInfo.CurrentCulture, Strings.PackageInfoLog, pkg.Id, pkg.Version));
+                        StringBuilder fileList;
+                        if (packagesThatWhereFiltered.TryGetValue(pkg, out fileList))
+                        {
+                            fileList.Append(filterFileName);
+                        }
+                        else
+                        {
+                            packagesThatWhereFiltered.Add(pkg, new StringBuilder(filterFileName));
+                        }
+                    }
+                    
+                }
+            }
+
             DependencyContext dependencyContext = new DependencyContextBuilder(mainProject, projectContext)
                 .WithFrameworkReferences(frameworkReferences)
                 .WithDirectReferences(directReferences)
@@ -101,6 +134,7 @@ namespace Microsoft.NET.Build.Tasks
                 .WithPrivateAssets(privateAssets)
                 .WithCompilationOptions(compilationOptions)
                 .WithReferenceAssembliesPath(FrameworkReferenceResolver.GetDefaultReferenceAssembliesPath())
+                .WithPackagesThatWhereFiltered(packagesThatWhereFiltered)
                 .Build();
 
             var writer = new DependencyContextWriter();

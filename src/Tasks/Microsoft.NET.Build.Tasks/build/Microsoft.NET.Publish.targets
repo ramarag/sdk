@@ -29,7 +29,11 @@ Copyright (c) .NET Foundation. All rights reserved.
   
     <IsPublishable Condition="'$(IsPublishable)'==''">true</IsPublishable>
   </PropertyGroup>
-
+  
+  <ItemGroup>
+    <FilterProjectFileList Include="$(FilterProjectFiles.Split('%3B'))"/>
+  </ItemGroup>
+  
   <ItemDefinitionGroup>
     <ResolvedFileToPublish>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
@@ -237,9 +241,6 @@ Copyright (c) .NET Foundation. All rights reserved.
   <Target Name="RunResolvePublishAssemblies"
           DependsOnTargets="ComputePrivateAssetsPackageReferences;
                             _DefaultMicrosoftNETPlatformLibrary">
-    <ItemGroup>
-      <FilterProjectFileList Include="$(FilterProjectFiles.Split('%3B'))"/>
-    </ItemGroup>
     <ResolvePublishAssemblies ProjectPath="$(MSBuildProjectFullPath)"
                               AssetsFilePath="$(ProjectAssetsFile)"
                               TargetFramework="$(TargetFrameworkMoniker)"
@@ -473,6 +474,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                       PlatformLibraryName="$(MicrosoftNETPlatformLibrary)"
                       CompilerOptions="@(DependencyFileCompilerOptions)"
                       PrivateAssetsPackageReferences="@(PrivateAssetsPackageReference)"
+                      FilterProjectFiles="@(FilterProjectFileList)"
                       IsSelfContained="$(SelfContained)" />
 
   </Target>
