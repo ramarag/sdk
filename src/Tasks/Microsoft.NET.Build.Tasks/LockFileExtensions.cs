@@ -112,6 +112,19 @@ namespace Microsoft.NET.Build.Tasks
             return exclusionList;
         }
 
+        public static HashSet<PackageIdentity> GetTransitiveExclusionList(
+            this LockFileTarget lockFileTarget,
+            LockFileTargetLibrary package,
+            IDictionary<string, LockFileTargetLibrary> libraryLookup)
+        {
+            var exclusionList = new HashSet<PackageIdentity>();
+
+            exclusionList.Add(new PackageIdentity(package.Name, package.Version));
+            CollectDependencies(libraryLookup, package.Dependencies, exclusionList);
+
+            return exclusionList;
+        }
+
         private static void CollectDependencies(
             IDictionary<string, LockFileTargetLibrary> libraryLookup,
             IEnumerable<PackageDependency> dependencies,
@@ -123,6 +136,24 @@ namespace Microsoft.NET.Build.Tasks
                 if (library.Version.Equals(dependency.VersionRange.MinVersion))
                 {
                     if (exclusionList.Add(library.Name))
+                    {
+                        CollectDependencies(libraryLookup, library.Dependencies, exclusionList);
+                    }
+                }
+            }
+        }
+
+        private static void CollectDependencies(
+            IDictionary<string, LockFileTargetLibrary> libraryLookup,
+            IEnumerable<PackageDependency> dependencies,
+            HashSet<PackageIdentity> exclusionList)
+        {
+            foreach (PackageDependency dependency in dependencies)
+            {
+                LockFileTargetLibrary library = libraryLookup[dependency.Id];
+                if (library.Version.Equals(dependency.VersionRange.MinVersion))
+                {
+                    if (exclusionList.Add(new PackageIdentity(library.Name, library.Version)))
                     {
                         CollectDependencies(libraryLookup, library.Dependencies, exclusionList);
                     }
