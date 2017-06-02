@@ -246,9 +246,7 @@ Copyright (c) .NET Foundation. All rights reserved.
       <ComposeDir Condition="'$(DoNotDecorateComposeDir)' != 'true'">$([System.IO.Path]::Combine($(ComposeDir), $(_TFM)))</ComposeDir>
       <StoreArtifactXml>$([System.IO.Path]::Combine($(ComposeDir),"artifact.xml"))</StoreArtifactXml>
       <PublishDir>$([System.IO.Path]::GetFullPath($(ComposeDir)))</PublishDir>
-      <_RandomFileName>$([System.IO.Path]::GetRandomFileName())</_RandomFileName>
-      <TEMP Condition="'$(TEMP)' == ''">$([System.IO.Path]::GetTempPath())</TEMP>
-      <ComposeWorkingDir Condition="'$(ComposeWorkingDir)' == ''">$([System.IO.Path]::Combine($(TEMP), $(_RandomFileName)))</ComposeWorkingDir>
+      <ComposeWorkingDir Condition="'$(ComposeWorkingDir)' == ''">$([System.IO.Path]::Combine($(MSBuildStartupDirectory), "obj-store"))</ComposeWorkingDir>
       <ComposeWorkingDir>$([System.IO.Path]::GetFullPath($(ComposeWorkingDir)))</ComposeWorkingDir>
       <StoreStagingDir>$([System.IO.Path]::Combine($(ComposeWorkingDir),"StagingDir"))</StoreStagingDir>      <!-- Will contain optimized managed assemblies in nuget cache layout -->
       <StoreSymbolsStagingDir>$([System.IO.Path]::Combine($(ComposeWorkingDir),"SymbolsStagingDir"))</StoreSymbolsStagingDir>
